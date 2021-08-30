@@ -1,0 +1,118 @@
+#!/bin/bash
+
+#########################################################################
+#
+# Script to plot Q tomography for all frequencies
+#
+#########################################################################
+resource_dir="/home/ayon/Resources/GMT_RESOURCES"
+
+#getting bounds
+echo 'Enter the no. of iterations:'
+read iter
+echo 'Enter the lower longitude limit'
+read longA
+echo 'Enter the higher longitude limit'
+read longB
+echo 'Enter the lower latitude limit'
+read latA
+echo 'Enter the higher latitude limit'
+read latB
+
+# overriding gmt defaults for paper media
+gmt gmtset MAP_FRAME_TYPE plain 
+gmt gmtset FONT_ANNOT_PRIMARY 12p,Helvetica
+gmt gmtset MAP_FRAME_PEN 1p
+gmt gmtset PS_MEDIA B4
+
+# Mercator projecton
+proj="-JM18.0"
+#proj="-JB70/106/20/50/7.5i"
+# Map bounds
+R='-R'
+dash='/'
+bounds=`echo $longA $longB $latA $latB $dash $R | awk '{print $6 $1 $5 $2 $5 $3 $5 $4}'`
+echo $bounds#NE_IMD
+miscB="-Ba5f2.5"
+misc="-P"
+
+for i in `seq 1 10 $iter` 
+do
+out=./inp_files_final/JK_iter_${i}
+#avg_Q=`cat inp_files/avg_txt | awk -v var=$i '{if ($2 == var) print $1}'`
+
+#read infile
+Q_infile=/home/ayon/Seismology/LgQ_calculation_scripts/OUTPUT/final_results/inp_files_final/${i}_output.txt		#Q file
+
+max=`sort -nk3,3 $Q_infile | tail -1 | awk '{print $3}' | awk -F"." '{print $1+1}'` 
+min=`sort -nk3,3 $Q_infile | head -1 | awk '{print $3}' | awk -F"." '{print $1-1}'`
+
+anot=`echo $max $min | awk '{print ($1-$2)/5.0}' | awk '{print $1}'`
+annot=`printf "%4.2f", $anot`
+
+ellipse_input=`echo "/home/ayon/Seismology/LgQ_calculation_scripts/work/ellipse_para_depth.dat"`
+
+########################### TRIANGULATE for Q #################################################################################
+#make cpt file
+min=300
+max=1000
+#annot=10
+gmt makecpt -Cseis -T$min/$max/50 -I > Q_all_tomo.cpt
+
+#triangulate 
+awk '{print $1, $2, $3}' $Q_infile | gmt triangulate -Gcodaq.grd $bounds -E -I0.1/0.1
+
+################## cpt and grid files here #######################################
+gridfile=$resource_dir/GRD_files_India/etopo2.grd
+cptfile=Q_all_tomo.cpt
+##################################################################################
+
+gmt grdsample codaq.grd -Gcodaq1.grd -I1m $bounds
+gmt grdsample ${gridfile} -GIndia.grd -I1m $bounds
+gmt grdgradient India.grd -A270 -fg -Nt -Gindia.int 
+gmt grdimage codaq1.grd -C${cptfile} -Iindia.int $bounds $proj -K -B5/5 >> ${out}.ps
+gmt pscoast $proj $bounds -W0.8p -Di -A100  -O -K -N1/0.8p,0/0/255 >> ${out}.ps
+gmt psscale -D7.0c/-1.0c/14.0c/.4ch -C${cptfile} -K -O >> ${out}.ps
+#gmt grdcontour codaq.grd -R $proj -O -A20+g+f -L$min/$max -K -Wa0.5p ${misc} >> ${out}.ps 
+#echo "86.5 23 $i Hz" | gmt pstext -K -O $proj -R -F+f16p,Times-Bold >> ${out}.ps 
+
+
+
+#awk '{print $7, $6, $11, $9*111.11, $10*111.11}' ${ellipse_input} | gmt psxy $proj -R -K -O -SE  -W0.1p,- >> ${out}.ps
+
+#Plotting the ray between source and receiver
+#the file f_lat_ev_st.txt contains the long and lat of and event and below it long and lat of corresponding station where it got recorded
+
+
+#Plotting the earthquake events symbol on the map
+#the file f_lat_ev.txt contains the long and lat of events
+#gmt psxy f_lat_ev.txt -R -JM -Sa0.25 -G255/0/0 -O -K >> ${out}
+
+#Plotting the stations symbol on the map
+#the file f_lat_st.txt contains the long and lat of stations
+#gmt psxy f_lat_st.txt -R -JM -St0.25 -G0/102/204 -O  >> ${out}
+
+echo "Plotting Kashmir Faults ..."
+# KASHMIR (Calling fault module: KASHMIR_Faults_module.gmt5)
+#/home/ayon/Resources/GMT_RESOURCES/Kashmir_values/KASHMIR_Faults_module.gmt5 ${out}.ps
+echo "Done"
+
+echo "Plotting Faults obtained from Keith ..."
+## KEITH ALL HIMALAYA (Calling fault module: KFP_Faults_module.gmt5)
+#/home/ayon/Resources/GMT_RESOURCES/Himalaya_from_Keith_2018/KFP_Faults_module.gmt5 ${out}.ps
+echo "Done"
+
+# location of event
+awk '{print $3, $2}' $ellipse_input | gmt psxy -R -K -O $proj -Sc0.25c -G255/0/0 -W0 >> ${out}.ps
+
+# location of station
+awk '{print $5, $4}' $ellipse_input | gmt psxy -O $proj -R -St0.4c -G255/255/255 -W0.5,0/0/0 >>${out}.ps
+#gmt psxy ${proj} ${bounds} -O < /dev/null >> ${out}.ps
+done
+
+
+# plotting the map
+#gv ${out}.ps
+# cleaning up default files and grd files
+rm -f .gmtcommands4 .gmtdefaults4 codaq.grd codaq1.grd India.grd india.int gmt.conf gmt.history 
+

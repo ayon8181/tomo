@@ -1,0 +1,92 @@
+#!/bin/bash
+
+################################################################################
+#
+# Copy 'ellipse_para.txt' in the directory where this 'ellipse_plot.gmt' file is
+#
+################################################################################
+#w_dir="/home/RESOURCES/GMT_resources"
+w_dir="/home/ayon/Seismology/LgQ_calculation_scripts/OUTPUT/final_results"
+
+#get ellipse parameters file
+ellipse_input=`echo "ellipse_para_l1000.dat"`
+
+
+# overriding gmt defaults for paper media ####################
+gmt gmtset MAP_FRAME_TYPE plain 
+gmt gmtset FONT_ANNOT_PRIMARY 12p,Helvetica
+gmt gmtset MAP_FRAME_PEN 1p
+
+##### making the map ######################
+# Mercator projecton
+proj="-JM18.0"
+# Equal area projection
+#proj="-JB44/130/7/61/8i"
+bounds="-R65/110/21/47"
+miscB="-Ba5f2.5"
+misc="-P"
+out=ellipse_map.ps
+echo "output file is $out"
+
+################## cpt and grid files here #######################################
+grd_file=/home/ayon/Resources/GMT_RESOURCES/GRD_files_India/etopo2.grd
+cpt_file=/home/ayon/Resources/GMT_RESOURCES/CPT_files/scale-india_colour.cpt
+##################################################################################
+gmt grdimage $grd_file -C$cpt_file $bounds -P -JM18.0  -K -B10/10 > ${out}
+
+gmt pscoast $bounds $proj -W1 -Di -N1/0.8 -A100 -O -B -K>>${out}
+#gmt grdgradient ${gridfile} -Nt1 -A45 -Gglobal.grd
+
+#gmt grdimage ${gridfile} -Iglobal.grd -C${cptfile} -V $bounds $miscB $proj -K > ${out}
+
+#gmt pscoast -K $proj $bounds -W1 -Di -A100 -N1/0.8 -O >> $out
+#gmt psxy f_lat_ev_st_400.txt $proj -R -W0.1p,green -P -O -A -K >> ${out}
+#gmt psxy f_lat_ev_st_600.txt $proj -R -W0.1p,blue -P -O -A -K >> ${out}
+#gmt psxy f_lat_ev_st_800.txt $proj -R -W0.1p,red -P -O -A -K >> ${out}
+
+# Plotting the ellipse
+awk '{print $7, $6, $11, $9*111.11, $10*111.11}' ${ellipse_input} | gmt psxy $proj -R -K -O -SE  -W0.1p,- >> ${out}
+
+#Plotting the ray between source and receiver
+#the file f_lat_ev_st.txt contains the long and lat of and event and below it long and lat of corresponding station where it got recorded
+#gmt psxy f_lat_ev_st_600.txt -R -JM -W0.01,blue -P -O -A -K >> ${out}
+#gmt psxy f_lat_ev_st_800.txt -R -JM -W0.01,red -P -O -A -K >> ${out}
+#gmt psxy f_lat_ev_st_400.txt -R -JM -W0.01,yellow -P -O -A -K >> ${out}
+
+
+#Plotting the earthquake events symbol on the map
+#the file f_lat_ev.txt contains the long and lat of events
+#gmt psxy f_lat_ev.txt -R -JM -Sa0.25 -G255/0/0 -O -K >> ${out}
+
+#Plotting the stations symbol on the map
+#the file f_lat_st.txt contains the long and lat of stations
+#gmt psxy f_lat_st.txt -R -JM -St0.25 -G0/102/204 -O  >> ${out}
+
+# location of event
+awk '{print $3, $2}' $ellipse_input | gmt psxy -R -K -O $proj -Sc0.25c -G255/0/0 -W0 >> ${out}
+
+# location of station
+awk '{print $5, $4}' $ellipse_input | gmt psxy -O $proj -R -St0.4c -G255/255/255 -W0.5,0/0/0 >>${out}
+#awk '{print $4, $3}' $iris_sta | gmt psxy -K -O $proj -R -St0.4c -G255/255/0 -W0 >>${out}
+
+#Legend for the symbols used
+#gmt pslegend -R -J -O -K -F+g255/255/255+p0.8 -Dx16/14.8/1.5i/0.5i/TC -C0.1i/0.1i -Vn << EOF >> ${out}
+#S 0.4c t 0.40 0/0/255 0.7p 0.3i Stations
+#S 0.4c c 0.30 255/0/0 0.7p 0.3i Events
+#EOF
+
+### end of plot #####################################
+#gmt psxy ${proj} ${bounds} -O < /dev/null >> ${out}
+
+# plotting the map
+gv ${out}
+
+#cleaning up 
+rm -f INDIA_temp.grd gmt.conf gmt.history global.grd
+# end
+
+
+
+
+
+

@@ -1,0 +1,34 @@
+#!/bin/bash
+#cpt and grd files location
+grd_file=/home/ayon/Resources/GMT_RESOURCES/GRD_files_India/etopo2.grd
+cpt_file=/home/ayon/Resources/GMT_RESOURCES/CPT_files/scale-india_colour.cpt
+
+#plot the basic topography map
+gmt grdimage $grd_file -C$cpt_file -R65/110/21/47 -JM15 -P -K -B10/10 > lat_IK_Coverage_Map.ps
+
+gmt pscoast -R -J -W3 -Df -Na/1/0t10:5_0 -A1000 -O -B -K>>lat_IK_Coverage_Map.ps
+
+#gmt xyz2grd input.dat –Gtomo.grd –R29.077999/45.077999/65.424004/85.924004 –I0.5/0.5 –V 
+
+#gmt makecpt –Ccelsius –T-0/1000/ –Z –I >! colors.cpt
+
+#gmt grdimage tomo.grd –Ccolors.cpt –R29.077999/45.077##999/65.424004/85.924004 -JM15 -P -K -B10/10  >> plot.ps
+
+#gmt psscale –D2.0i/4.75i/3.5i/.3ih –O –Ccolors.cpt –B2.5 >> plot.ps
+# Naming the Faults in J&K [OLD WAY - REVISE]
+
+
+#Plotting the ray between source and receiver
+#the file f_lat_ev_st.txt contains the long and lat of and event and below it long and lat of corresponding station where it got recorded
+
+gmt psxy f_lat_ev_st_600.txt -R -JM -W0.1,blue -P -O -A -K >> lat_IK_Coverage_Map.ps
+gmt psxy f_lat_ev_st_800.txt -R -JM -W0.1,red -P -O -A -K >> lat_IK_Coverage_Map.ps
+gmt psxy f_lat_ev_st_400.txt -R -JM -W0.1,yellow -P -O -A -K >> lat_IK_Coverage_Map.ps
+
+#Plotting the earthquake events symbol on the map
+#the file f_lat_ev.txt contains the long and lat of events
+gmt psxy f_lat_ev.txt -R -JM -Sa0.25 -G255/0/0 -O -K >> lat_IK_Coverage_Map.ps
+
+#Plotting the stations symbol on the map
+#the file f_lat_st.txt contains the long and lat of stations
+gmt psxy f_lat_st.txt -R -JM -St0.25 -G0/102/204 -O  >> lat_IK_Coverage_Map.ps
